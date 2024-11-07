@@ -38,7 +38,7 @@ export function createTransform$(opts?: ImportPluginOptions) {
             if (specificSpecifiers.length > 0) {
               const newImportDeclaration = t.importDeclaration(
                 specificSpecifiers,
-                t.stringLiteral("solid-js/dist/solid")
+                t.stringLiteral("solid-js/dist/solid.cjs")
               );
               path.insertAfter(newImportDeclaration);
               if (otherSpecifiers.length > 0) {

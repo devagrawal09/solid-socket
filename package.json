@@ -13,6 +13,7 @@
     "@solid-primitives/scheduled": "^1.4.4",
     "@solidjs/router": "^0.14.10",
     "@solidjs/start": "^1.0.9",
+    "rxjs": "^7.8.1",
     "solid-icons": "^1.1.0",
     "solid-js": "^1.9.2",
     "unique-names-generator": "^4.7.1",
@@ -24,6 +25,7 @@
   },
   "devDependencies": {
     "@babel/preset-typescript": "^7.26.0",
+    "@vinxi/plugin-directives": "^0.4.3",
     "babel-plugin-transform-import-paths": "^1.0.3",
     "vite-plugin-babel": "^1.2.0"
   }
