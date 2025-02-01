@@ -84,12 +84,6 @@ export type SerializedReactiveThing<T = any> =
 
 export type SerializedThing = SerializedRef | SerializedReactiveThing;
 
-export type SerializedStream = {
-  __type: "stream";
-  id: string;
-  scope: string;
-};
-
 export function createSeriazliedRef(
   opts: Omit<SerializedRef, "__type">
 ): SerializedRef {

@@ -1,5 +1,5 @@
 import { createAsync, type RouteSectionProps } from "@solidjs/router";
-import { Show } from "solid-js";
+import { ErrorBoundary, Show } from "solid-js";
 import { Login, Logout } from "~/components/auth";
 import { Invites } from "~/components/invites";
 import { PresenceHost } from "~/components/presence";
@@ -8,15 +8,15 @@ import { getUserId } from "~/lib/auth";
 import { useCounter } from "~/lib/counter";
 
 export default function TodoAppPage(props: RouteSectionProps) {
-  const userId = createAsync(() => getUserId());
+  // const userId = createAsync(() => getUserId());
   const counter = useCounter();
 
   return (
-    <>
+    <ErrorBoundary fallback={<div>Something went wrong</div>}>
       <button onClick={() => counter.increment()}>
         Count {counter.count()}
       </button>
-      <Show
+      {/* <Show
         when={userId()}
         fallback={
           <>
@@ -52,7 +52,7 @@ export default function TodoAppPage(props: RouteSectionProps) {
           <TodoApp filter={props.location.query.show as TodosFilter} />
         </PresenceHost>
         <Invites />
-      </Show>
-    </>
+      </Show> */}
+    </ErrorBoundary>
   );
 }

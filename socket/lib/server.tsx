@@ -20,7 +20,6 @@ import {
   SerializedMemo,
   SerializedProjection,
   SerializedRef,
-  SerializedStream,
   WsMessage,
   WsMessageDown,
   WsMessageUp,
@@ -69,7 +68,6 @@ export class LiveSolidServer {
   constructor(public peer: Peer) {}
 
   send(message: WsMessage<WsMessageDown>) {
-    // console.log(`send`, message);
     this.peer.send(JSON.stringify(message));
   }
 
@@ -77,10 +75,6 @@ export class LiveSolidServer {
     if (message.type === "create") {
       this.create(message.id, message.name, message.input);
     }
-
-    // if (message.type === "subscribe") {
-    //   this.subscribe(message.id, message.ref);
-    // }
 
     if (message.type === "dispose") {
       this.dispose(message.id);
@@ -141,6 +135,7 @@ export class LiveSolidServer {
         return { refs, disposal };
       });
       this.closures.set(id, { refs, disposal });
+      console.log({ id, refs, cl: this.closures });
     } catch (error) {
       this.send({ error: toJSON(error), id, type: "error" });
     }
@@ -148,7 +143,9 @@ export class LiveSolidServer {
 
   async invoke<I, O>(id: string, ref: SerializedRef<I, O>, input: SerovalJSON) {
     try {
-      const refFn = this.closures.get(ref.scope)!.refs!.get(ref.id)!;
+      const c = this.closures.get(ref.scope);
+      console.log({ ref, c, cl: this.closures });
+      const refFn = c!.refs!.get(ref.id)!;
       const fnInput = fromJSON(input);
       const arified = Array.isArray(fnInput) ? fnInput : [fnInput];
       const response = await refFn(...arified);
@@ -167,24 +164,8 @@ export class LiveSolidServer {
     }
   }
 
-  // subscribe<O>(id: string, ref: SerializedReactiveThing<O>) {
-  //   const source = this.closures.get(ref.scope)!.refs!.get(ref.id)!;
-
-  //   const response$ = observable(() => source());
-
-  //   const sub = response$.subscribe((payload) => {
-  //     const value = toJSON(payload);
-  //     this.send({ id, value, type: "value" });
-  //   });
-
-  //   this.closures.set(id, { disposal: () => sub.unsubscribe() });
-  // }
-
-  stream<O>(stream: SerializedStream) {}
-
   cleanup() {
     for (const [key, closure] of this.closures.entries()) {
-      // console.log(`Disposing ${key}`);
       closure.disposal();
       this.closures.delete(key);
     }
@@ -216,7 +197,7 @@ function createSocketMemoConsumer<O>(
   server: LiveSolidServer
 ) {
   const [signal, setSignal] = createSignal(ref.initial);
-  server.observers.set(ref.id, (value) => setSignal(() => fromJSON(value)));
+  server.observers.set(ref.id, (value) => setSignal(() => fromJSON<O>(value)));
   onCleanup(() => server.observers.delete(ref.id));
   return signal;
 }

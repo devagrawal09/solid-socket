@@ -33,67 +33,42 @@ function wsRpc(message: WsMessageUp) {
   const ws = getWs();
   const id = crypto.randomUUID() as string;
 
-  return new Promise<SerovalJSON>(async (res, rej) => {
-    function dispose() {
-      ws.removeEventListener("message", handler);
+  return new Promise<{ value: SerovalJSON; dispose: () => void }>(
+    async (res, rej) => {
+      function dispose() {
+        ws.removeEventListener("message", handler);
+        ws.send(
+          JSON.stringify({
+            type: "dispose",
+            id,
+          } satisfies WsMessage<WsMessageUp>)
+        );
+      }
+
+      function handler(event: { data: string }) {
+        // console.log(`handler ${id}`, message, { data: event.data });
+        const data = JSON.parse(event.data) as WsMessage<WsMessageDown>;
+        if (data.id === id && data.type === "value") {
+          res({ value: data.value, dispose });
+        }
+        if (data.id === id && data.type === "error") {
+          rej(data.error);
+        }
+      }
+
+      ws.addEventListener("message", handler);
       ws.send(
-        JSON.stringify({
-          type: "dispose",
-          id,
-        } satisfies WsMessage<WsMessageUp>)
+        JSON.stringify({ ...message, id } satisfies WsMessage<WsMessageUp>)
       );
     }
-
-    function handler(event: { data: string }) {
-      // console.log(`handler ${id}`, message, { data: event.data });
-      const data = JSON.parse(event.data) as WsMessage<WsMessageDown>;
-      if (data.id === id && data.type === "value") {
-        res(data.value);
-        dispose();
-      }
-      if (data.id === id && data.type === "error") {
-        rej(data.error);
-        dispose();
-      }
-    }
-
-    ws.addEventListener("message", handler);
-    ws.send(
-      JSON.stringify({ ...message, id } satisfies WsMessage<WsMessageUp>)
-    );
-  });
+  );
 }
-
-// function wsSub(message: WsMessageUp) {
-//   const ws = getWs();
-//   const id = crypto.randomUUID();
-
-//   return rxFrom(
-//     new Observable<SerovalJSON>((obs) => {
-//       // console.log(`attaching sub handler`);
-//       function handler(event: { data: string }) {
-//         const data = JSON.parse(event.data) as WsMessage<WsMessageDown>;
-//         // console.log(`data`, data, id);
-//         if (data.id === id && data.type === "value") obs.next(data.value);
-//       }
-
-//       ws.addEventListener("message", handler);
-//       ws.send(
-//         JSON.stringify({ ...message, id } satisfies WsMessage<WsMessageUp>)
-//       );
-
-//       return () => {
-//         // console.log(`detaching sub handler`);
-//         ws.removeEventListener("message", handler);
-//       };
-//     })
-//   );
-// }
 
 function createSocketRefConsumer<I extends any[], O>(ref: SerializedRef) {
   return async (...payload: I) => {
     const input = toJSON(payload);
-    const value = await wsRpc({ type: "invoke", ref, input });
+    const { value, dispose } = await wsRpc({ type: "invoke", ref, input });
+    dispose();
     return fromJSON<O>(value);
   };
 }
@@ -178,13 +153,14 @@ export function createEndpoint(name: string, rawInput?: any) {
   onCleanup(() => {
     // console.log(`cleanup endpoint`);
     ws.removeEventListener("message", refHandler);
+    scopePromise.then(({ dispose }) => dispose());
   });
 
   const scope = createAsync(() => scopePromise);
   const deserializedScope = createMemo(
     () =>
       scope() &&
-      deserializeReactivePayload(scope()!, {
+      deserializeReactivePayload(scope()!.value, {
         createSocketMemoConsumer,
         createSocketRefConsumer,
         createSocketProjectionConsumer,
